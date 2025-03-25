@@ -1,2 +1,1 @@
-# dropdown-slider
- 
+The purpose of this project was to test my understanding of how to manipulate the positions of elements using JavaScript.
