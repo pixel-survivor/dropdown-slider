@@ -11,7 +11,6 @@
     margin: 150px auto;
     text-align: center;
     width: 80%;
-    background-color: red;
     position: relative;
 }
 .top-card{
@@ -22,9 +21,10 @@
 .bottom-card{
     background-color: green;
     padding: 0.5em;
-    width: 99.99%;
+    width: 100%;
     position: absolute;
     z-index: -1;
+    clip-path: inset(0 0 0 0); /*Default: no clipping*/
 }
 
 .drop-trigger{
