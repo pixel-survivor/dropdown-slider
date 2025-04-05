@@ -1,162 +1,94 @@
-document.addEventListener('DOMContentLoaded', function(){
-    const topCard = document.querySelector('.top-card');
-    const bottomCard = document.querySelector('.bottom-card');
+document.addEventListener('DOMContentLoaded', function() {
+    const cardGroups = [];
+    const topCards = document.querySelectorAll('.top-card');
+    const cardContainer = document.getElementById('cardcontainer');
 
-    function getElementTopPosition(element){
+    function getElementPosition(element) {
         const rect = element.getBoundingClientRect();
-        const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
         const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
         return {
-          top: rect.top + scrollTop,
-          left: rect.left + scrollLeft,
-        };
-    }
-
-    function getElementBottomPosition(element){
-        const rect = element.getBoundingClientRect();
-        const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
-        const scrollTop = window.scrollY || document.documentElement.scrollTop;
-        return{
+            top: rect.top + scrollTop,
             bottom: rect.bottom + scrollTop,
-            left: rect.left + scrollLeft,
         };
     }
 
-    function matchBottomToBottom(element1, element2){
-        const bottomCard = getElementBottomPosition(element1);
-        const topCard = getElementBottomPosition(element2);
-        if((element1.classList.contains('initial') || element1.classList.contains('closed')) && bottomCard.bottom < topCard.bottom){
-            return topCard.bottom - bottomCard.bottom;
-        }
-        return bottomCard.bottom > topCard.bottom ? topCard.bottom - bottomCard.bottom : 0;
-    }
+    for (let i = 1; i <= topCards.length; i++) {
+        const topCardId = `top-card-${i}`;
+        const bottomCardId = `bottom-card-${i}`;
+        const dropTriggerId = `drop-trigger-${i}`;
 
-    function matchTopToBottom(element1, element2){
-        const bottomCardTop = getElementTopPosition(element1).top;
-        const bottomCardBottom = getElementBottomPosition(element2).bottom;
-        const topCardTop = getElementTopPosition(element2).top;
-        const topCardBottom = getElementBottomPosition(element2).bottom;
-        if(bottomCardTop < topCardTop){
-            return -(topCardTop - bottomCardBottom);
-        }
-        else{
-            if(bottomCardTop === topCardTop){
-                return topCardBottom - bottomCardTop;
-            }
-            else{ 
-                return bottomCardBottom - topCardTop;
-            }
-        }
-    } 
-    function moveElementUp(element1, element2, windowEvent){
+        const topCard = document.getElementById(topCardId);
+        const bottomCard = document.getElementById(bottomCardId);
+        const dropTrigger = document.getElementById(dropTriggerId);
 
-        if(element1.classList.contains('initial')){
-            const diff = matchBottomToBottom(element1, element2);
-            element1.style.transform = `translateY(${diff}px)`; 
-            if(diff < 0){
-                const clipHeight = Math.abs(diff);
-                element1.style.clipPath = `inset(${clipHeight}px 0 0 0)`;
-            }
-        }
-        else{
-            const element1Top = getElementTopPosition(bottomCard).top;
-            const element2Top = getElementTopPosition(topCard).top;
-            let diff = element1Top - element2Top;
+        if (topCard && bottomCard && dropTrigger) {
+            const cardGroup = {
+                topCard: topCard,
+                bottomCard: bottomCard,
+                dropTrigger: dropTrigger,
+                getTopCardPosition: function() {
+                    return getElementPosition(this.topCard);
+                },
+                getTopCardContainerPosition: function(){
+                    return{
+                        top: this.getTopCardPosition().top - getElementPosition(cardContainer).top,
+                        bottom: this.getTopCardPosition().bottom - getElementPosition(cardContainer).top
+                    };
+                },
+                getBottomCardPosition: function() {
+                    return getElementPosition(this.bottomCard);
+                },
+                getBottomCardContainerPosition: function(){
+                    return{
+                        top: this.getBottomCardPosition().top - getElementPosition(cardContainer).top,
+                        bottom: this.getBottomCardPosition().bottom - getElementPosition(cardContainer).top
+                    };
+                },
+            };
 
-            diff += matchBottomToBottom(element1, element2);
-            if(!windowEvent || (windowEvent && element1.classList.contains('closed') && element1Top > element2Top)){
-                element1.style.transform = `translateY(${diff}px)`; 
-            }
+            cardGroups.push(cardGroup);
 
-            const clipHeight = Math.abs(diff);
-            if(diff < 0){
-                if(windowEvent && element1.classList.contains('closed')){
-                    element1.style.transform = `translateY(${diff}px)`;
-                    element1.style.clipPath = `inset(${clipHeight}px 0 0 0)`;
-                    return;
-                }
-                else{
-                    if(windowEvent){
-                        diff = matchTopToBottom(element1, element2);
-                        element1.style.transform = `translateY(${diff}px)`;
-                        return;
-                    }
-                    setTimeout(() => {
-                        element1.style.clipPath = `inset(${clipHeight}px 0 0 0)`;
-                    }, 1000); 
-                    return;
-                }
-            }
-
-            if(windowEvent && element1.classList.contains('open') && diff > 0){
-                diff = matchTopToBottom(element1, element2);
-                element1.style.transform = `translateY(${diff}px)`;
-            }
-
-            else{
-                const element1Bottom = getElementBottomPosition(element1).bottom;
-                const element2Bottom = getElementBottomPosition(element2).bottom;
-                if(element1Bottom < element2Bottom && windowEvent){
-                    diff = matchBottomToBottom(element1, element2)
-                    element1.style.transform = `translateY(${diff}px)`;
-                    return;
-                }
-            }
+            dropTrigger.addEventListener('click', function() {
+                console.log(`Button ${dropTriggerId.split('-').pop()} clicked!`);
+            });
+        } else {
+            console.warn(`Missing one or more elements for card group ${i}.`);
         }
     }
 
-    function moveElementDown(element1, element2){
-        let diff = matchTopToBottom(element1, element2); 
-        element1.style.transform = `translateY(${diff}px)`;
-        setTimeout(() => {
-            element1.style.clipPath = `inset(0 0 0 0)`;
-        }, 1000); 
-    }
+    function logDebugger(cardGroup){
 
-    function handleResize(element1, element2){
-        const element1Top = getElementTopPosition(element1).top;
-        const element2Bottom = getElementBottomPosition(element2).bottom;
-        const windowEvent = true;
-        element1.style.transition = `transform 0s`;
-        if(element1.classList.contains('closed')){
-            moveElementUp(element1, element2, windowEvent);
-        }
-        else{ 
-            if(element1Top < element2Bottom){
-                moveElementDown(element1, element2);
-            }
-            else{
-                moveElementUp(element1, element2, windowEvent); 
-            }
-        }
-    }
+        console.log("container height:", cardContainer.getBoundingClientRect().height);
+        console.log("container position(relative to doc):", getElementPosition(cardContainer));
 
-    window.addEventListener('resize', () => handleResize(bottomCard, topCard));
-    
-    if(bottomCard.classList.contains('initial')){
-        moveElementUp(bottomCard, topCard);
-        bottomCard.classList.toggle('initial');
-        bottomCard.classList.toggle('closed');
+        console.log('---\n---\n---');
+
+        const topCard = cardGroup.getTopCardPosition();
+        console.log(`topCard top-edge is ${topCard.top}px from the top of the document`);
+        console.log(`topCard bottom-edge is ${topCard.bottom}px from the top of the document`);
+
+        const bottomCard = cardGroup.getBottomCardPosition();
+        console.log(`bottomCard top-edge is ${bottomCard.top}px from the top of the document`);
+        console.log(`bottomCard bottom-edge is ${bottomCard.bottom}px from the top of the document`);
+
+        console.log('---\n---\n---');
+
+        const topCardContainer = cardGroup.getTopCardContainerPosition();
+        console.log(`topCard top-edge is ${topCardContainer.top}px from the top of the container`);
+        console.log(`topCard bottom-edge is ${topCardContainer.bottom}px from the top of the container`);
+
+        const bottomCardContainer = cardGroup.getBottomCardContainerPosition();
+        console.log(`bottomCard top-edge is ${bottomCardContainer.top}px from the top of the container`);
+        console.log(`bottomCard bottom-edge is ${bottomCardContainer.bottom}px from the top of the container`);
+
+        console.log('---\n---\n---');
     }
     
-    const dropTrigger = document.querySelector('.drop-trigger');
-    dropTrigger.addEventListener('click', () => {
-        dropTrigger.disabled = true;
-    
-        if(bottomCard.classList.contains('closed')){
-            bottomCard.classList.toggle('closed');
-            bottomCard.classList.toggle('open');
-            bottomCard.style.transition = 'transform 2s ease-in-out';
-            moveElementDown(bottomCard, topCard);
-        }
-        else{
-            bottomCard.classList.toggle('open');
-            bottomCard.classList.toggle('closed');
-            bottomCard.style.transition = 'transform 2s ease-in-out';
-            moveElementUp(bottomCard, topCard);
-        }
-        setTimeout(() =>{
-            dropTrigger.disabled = false;
-        }, 2000);
-    });
+    logDebugger(cardGroups[0]);
+
+    cardGroups[2].bottomCard.style.top = `${cardGroups[2].getTopCardContainerPosition().bottom}px`;
+    cardGroups[2].bottomCard.style.transform = `translateY(-${cardGroups[2].bottomCard.getBoundingClientRect().height}px)`
+    console.log("bottomCard Height:", cardGroups[2].bottomCard.getBoundingClientRect().height);
+    cardGroups[1].bottomCard.style.top = `${cardGroups[1].getTopCardContainerPosition().bottom - cardGroups[1].bottomCard.getBoundingClientRect().height}px`;
 });

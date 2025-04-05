@@ -5,28 +5,46 @@
     font-family: 'Tahoma', sans-serif;
 }
 
-#cardcontainer-1{
+#cardcontainer{
     display: flex;
     flex-direction: column;
     margin: 150px auto;
     text-align: center;
     width: 80%;
     position: relative;
+    background-color: #ffb1fa;
 }
+
 .top-card{
-    background-color: rgb(122, 122, 176);
     padding: 0.5em;
+    position: relative;
+    margin-bottom: 30px;
 }
 
 .bottom-card{
-    background-color: green;
+    background-color: rgb(0, 128, 0);
     padding: 0.5em;
     width: 100%;
     position: absolute;
-    z-index: -1;
-    clip-path: inset(0 0 0 0); /*Default: no clipping*/
+    z-index: 1;
 }
 
 .drop-trigger{
     cursor: pointer;
+}
+
+#top-card-1{
+    background-color: #7a7ab0;
+}
+#top-card-2{
+    background-color: #ff8e8e;
+}
+#top-card-3{
+    background-color: #54ff54;
+}
+#bottom-card-2{
+    background-color: #000000;
+}
+#bottom-card-3{
+    background-color: #ffe368;
 }
