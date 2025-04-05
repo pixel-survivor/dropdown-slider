@@ -1,7 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     const cardGroups = [];
-    const topCards = document.querySelectorAll('.top-card');
+    const topCards = document.querySelectorAll('#cardcontainer > .top-card');
     const cardContainer = document.getElementById('cardcontainer');
+
+    if(topCards.length > 0){
+        const lastTopCard = topCards[topCards.length-1];
+        lastTopCard.style.marginBottom = '0px';
+    }
 
     function getElementPosition(element) {
         const rect = element.getBoundingClientRect();
@@ -50,13 +55,41 @@ document.addEventListener('DOMContentLoaded', function() {
             cardGroups.push(cardGroup);
 
             dropTrigger.addEventListener('click', function() {
-                console.log(`Button ${dropTriggerId.split('-').pop()} clicked!`);
+                console.log(`Button ${dropTriggerId.split('-').pop()} clicked!------------------------------------------------------------`);
+
             });
 
-            cardGroups[i-1].bottomCard.style.transform = `translateY(${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}px)`;
+            const computedStyle = window.getComputedStyle(cardContainer);
+            if(computedStyle.flexDirection === 'column'){
+                cardGroups[i-1].bottomCard.style.transform = `translateY(${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}px)`;
 
-        } else {
+                console.log(`bottomCard${i} was translated ${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}px`);
+            }
+            else{
+                console.log("Flex-Direction: Row");
+            }
+
+        } 
+        else{
             console.warn(`Missing one or more elements for card group ${i}.`);
         }
-    }
+    } 
+    
+    console.log("topCard relative to container:",cardGroups[0].getTopCardContainerPosition());
+    console.log("bottomCard relative to container:",cardGroups[0].getBottomCardContainerPosition());
+
+    console.log("current cardContainer height:", cardContainer.getBoundingClientRect().height);
+    console.log("current topCard[2].bottom:",cardGroups[2].getTopCardContainerPosition().bottom);
+
+    let a = cardContainer.getBoundingClientRect().height;   
+    let b = a;
+    a += 100;
+    b = a - b;
+    cardContainer.style.height = `${a}px`;
+    
+    console.log(`translate element by ${b}px`);
+    cardGroups[2].topCard.style.transform = `translateY(${b}px)`;
+    console.log("topCard.bottom relative to container:", cardGroups[2].getTopCardContainerPosition().bottom);
+    console.log("cardContainer height:",a);
+
 });
