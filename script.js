@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     const cardGroups = [];
+    const bottomCardTranslations = [];
     const topCards = document.querySelectorAll('#cardcontainer > .top-card');
     const cardContainer = document.getElementById('cardcontainer');
 
+    
     if(topCards.length > 0){
         const lastTopCard = topCards[topCards.length-1];
         lastTopCard.style.marginBottom = '0px';
@@ -16,34 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
             top: rect.top + scrollTop,
             bottom: rect.bottom + scrollTop,
         };
-    }
-
-    function getTranslation(element){
-        const style = window.getComputedStyle(element);
-        const transformValue = style.transform || style.webkitTransform || style.mozTransform;
-
-        if (!transformValue || transformValue === 'none') {
-            return { x: 0, y: 0 };
-        }
-
-        const matrix = transformValue.match(/matrix.*\((.+)\)/)?.[1]?.split(', ') || [];
-
-        if (matrix.length === 6) {
-            // 2D transform
-            return {
-            x: parseFloat(matrix[4]) || 0,
-            y: parseFloat(matrix[5]) || 0,
-            };
-        } else if (matrix.length === 16) {
-            // 3D transform
-            return {
-            x: parseFloat(matrix[12]) || 0,
-            y: parseFloat(matrix[13]) || 0,
-            z: parseFloat(matrix[14]) || 0,
-            };
-        }
-
-        return { x: 0, y: 0 };
     }
 
     for (let i = 1; i <= topCards.length; i++) {
@@ -60,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 topCard: topCard,
                 bottomCard: bottomCard,
                 dropTrigger: dropTrigger,
+                index: i - 1,
                 getTopCardPosition: function() {
                     return getElementPosition(this.topCard);
                 },
@@ -83,21 +58,17 @@ document.addEventListener('DOMContentLoaded', function() {
             cardGroups.push(cardGroup);
 
             dropTrigger.addEventListener('click', function() {
-                console.log(`Button ${dropTriggerId.split('-').pop()} clicked!`);
-                console.log(cardGroups[i-1].topCard);
 
-                let a = getTranslation(cardGroups[i-1].bottomCard).y;
-                console.log("current translation:",a);
-                a += 50;
-                cardGroups[i-1].bottomCard.style.transform = `translateY(${a}px)`;
-                console.log("new translation:",a);
-                console.log(getTranslation(cardGroups[i-1].bottomCard));
+                console.log(`Button ${dropTriggerId.split('-').pop()} clicked!`);
+                toggleState(cardGroups[cardGroup.index]);
             });
 
             const computedStyle = window.getComputedStyle(cardContainer);
             if(computedStyle.flexDirection === 'column'){
-                cardGroups[i-1].bottomCard.style.transform = `translateY(${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}px)`;
-                console.log(`${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}`);
+                const translationValue = cardGroups[cardGroup.index].getTopCardContainerPosition().bottom - cardGroups[cardGroup.index].bottomCard.getBoundingClientRect().height;
+                cardGroups[cardGroup.index].bottomCard.style.transform = `translateY(${translationValue}px)`;
+                bottomCardTranslations.push(translationValue);
+                console.log(`${cardGroups[cardGroup.index].getTopCardContainerPosition().bottom - cardGroups[cardGroup.index].bottomCard.getBoundingClientRect().height}`);
             }
             else{
                 console.log("Flex-Direction: Row");
@@ -107,5 +78,44 @@ document.addEventListener('DOMContentLoaded', function() {
         else{
             console.warn(`Missing one or more elements for card group ${i}.`);
         }
+    }
+
+    console.log("bottomCardTranslations[]:",bottomCardTranslations);
+
+    function toggleState(cardGroup){
+        if(cardGroup.bottomCard.classList.contains('closed')){
+            console.log("Opening...");
+            cardGroup.bottomCard.classList.toggle('closed');
+            cardGroup.bottomCard.classList.toggle('open');
+
+            matchTopToBottom(cardGroup);
+        }
+        else{
+            console.log("Closing...");
+            cardGroup.bottomCard.classList.toggle('open');
+            cardGroup.bottomCard.classList.toggle('closed');
+
+            matchBottomToBottom(cardGroup);
+        }
+    }
+
+    function matchTopToBottom(cardGroup){
+        let currentTranslation = bottomCardTranslations[cardGroup.index];
+        console.log("Initial, Closed and Current Translation:", currentTranslation);
+        currentTranslation += cardGroup.bottomCard.getBoundingClientRect().height;
+        cardGroup.bottomCard.style.transform = `translateY(${currentTranslation}px)`;
+        bottomCardTranslations[cardGroup.index] = currentTranslation;
+        cardGroup.bottomCard.style.transition = 'transform 3s ease-in';
+        console.log("bottomCardTranslations[]:",bottomCardTranslations);
+    }
+
+    function matchBottomToBottom(cardGroup){
+        let currentTranslation = bottomCardTranslations[cardGroup.index];
+        console.log("Open and Current Translation", currentTranslation);
+        let newTranslation = currentTranslation - cardGroup.bottomCard.getBoundingClientRect().height;
+        cardGroup.bottomCard.style.transform = `translateY(${newTranslation}px)`;
+        bottomCardTranslations[cardGroup.index] = newTranslation;
+        cardGroup.bottomCard.style.transition = 'transform 3s ease-in';
+        console.log("bottomCardTranslations[]:",bottomCardTranslations);
     }
 });
