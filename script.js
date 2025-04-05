@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getTopCardContainerPosition: function(){
                     return{
                         top: this.getTopCardPosition().top - getElementPosition(cardContainer).top,
-                        bottom: this.getTopCardPosition().bottom - getElementPosition(cardContainer).top
+                        bottom: this.getTopCardPosition().bottom - getElementPosition(cardContainer).top,
                     };
                 },
                 getBottomCardPosition: function() {
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 getBottomCardContainerPosition: function(){
                     return{
                         top: this.getBottomCardPosition().top - getElementPosition(cardContainer).top,
-                        bottom: this.getBottomCardPosition().bottom - getElementPosition(cardContainer).top
+                        bottom: this.getBottomCardPosition().bottom - getElementPosition(cardContainer).top,
                     };
                 },
             };
@@ -52,43 +52,11 @@ document.addEventListener('DOMContentLoaded', function() {
             dropTrigger.addEventListener('click', function() {
                 console.log(`Button ${dropTriggerId.split('-').pop()} clicked!`);
             });
+
+            cardGroups[i-1].bottomCard.style.transform = `translateY(${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}px)`;
+
         } else {
             console.warn(`Missing one or more elements for card group ${i}.`);
         }
     }
-
-    function logDebugger(cardGroup){
-
-        console.log("container height:", cardContainer.getBoundingClientRect().height);
-        console.log("container position(relative to doc):", getElementPosition(cardContainer));
-
-        console.log('---\n---\n---');
-
-        const topCard = cardGroup.getTopCardPosition();
-        console.log(`topCard top-edge is ${topCard.top}px from the top of the document`);
-        console.log(`topCard bottom-edge is ${topCard.bottom}px from the top of the document`);
-
-        const bottomCard = cardGroup.getBottomCardPosition();
-        console.log(`bottomCard top-edge is ${bottomCard.top}px from the top of the document`);
-        console.log(`bottomCard bottom-edge is ${bottomCard.bottom}px from the top of the document`);
-
-        console.log('---\n---\n---');
-
-        const topCardContainer = cardGroup.getTopCardContainerPosition();
-        console.log(`topCard top-edge is ${topCardContainer.top}px from the top of the container`);
-        console.log(`topCard bottom-edge is ${topCardContainer.bottom}px from the top of the container`);
-
-        const bottomCardContainer = cardGroup.getBottomCardContainerPosition();
-        console.log(`bottomCard top-edge is ${bottomCardContainer.top}px from the top of the container`);
-        console.log(`bottomCard bottom-edge is ${bottomCardContainer.bottom}px from the top of the container`);
-
-        console.log('---\n---\n---');
-    }
-    
-    logDebugger(cardGroups[0]);
-
-    cardGroups[2].bottomCard.style.top = `${cardGroups[2].getTopCardContainerPosition().bottom}px`;
-    cardGroups[2].bottomCard.style.transform = `translateY(-${cardGroups[2].bottomCard.getBoundingClientRect().height}px)`
-    console.log("bottomCard Height:", cardGroups[2].bottomCard.getBoundingClientRect().height);
-    cardGroups[1].bottomCard.style.top = `${cardGroups[1].getTopCardContainerPosition().bottom - cardGroups[1].bottomCard.getBoundingClientRect().height}px`;
 });
