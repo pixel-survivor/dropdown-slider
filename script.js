@@ -18,6 +18,34 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    function getTranslation(element){
+        const style = window.getComputedStyle(element);
+        const transformValue = style.transform || style.webkitTransform || style.mozTransform;
+
+        if (!transformValue || transformValue === 'none') {
+            return { x: 0, y: 0 };
+        }
+
+        const matrix = transformValue.match(/matrix.*\((.+)\)/)?.[1]?.split(', ') || [];
+
+        if (matrix.length === 6) {
+            // 2D transform
+            return {
+            x: parseFloat(matrix[4]) || 0,
+            y: parseFloat(matrix[5]) || 0,
+            };
+        } else if (matrix.length === 16) {
+            // 3D transform
+            return {
+            x: parseFloat(matrix[12]) || 0,
+            y: parseFloat(matrix[13]) || 0,
+            z: parseFloat(matrix[14]) || 0,
+            };
+        }
+
+        return { x: 0, y: 0 };
+    }
+
     for (let i = 1; i <= topCards.length; i++) {
         const topCardId = `top-card-${i}`;
         const bottomCardId = `bottom-card-${i}`;
@@ -55,15 +83,21 @@ document.addEventListener('DOMContentLoaded', function() {
             cardGroups.push(cardGroup);
 
             dropTrigger.addEventListener('click', function() {
-                console.log(`Button ${dropTriggerId.split('-').pop()} clicked!------------------------------------------------------------`);
+                console.log(`Button ${dropTriggerId.split('-').pop()} clicked!`);
+                console.log(cardGroups[i-1].topCard);
 
+                let a = getTranslation(cardGroups[i-1].bottomCard).y;
+                console.log("current translation:",a);
+                a += 50;
+                cardGroups[i-1].bottomCard.style.transform = `translateY(${a}px)`;
+                console.log("new translation:",a);
+                console.log(getTranslation(cardGroups[i-1].bottomCard));
             });
 
             const computedStyle = window.getComputedStyle(cardContainer);
             if(computedStyle.flexDirection === 'column'){
                 cardGroups[i-1].bottomCard.style.transform = `translateY(${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}px)`;
-
-                console.log(`bottomCard${i} was translated ${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}px`);
+                console.log(`${cardGroups[i-1].getTopCardContainerPosition().bottom - cardGroups[i-1].bottomCard.getBoundingClientRect().height}`);
             }
             else{
                 console.log("Flex-Direction: Row");
@@ -73,23 +107,5 @@ document.addEventListener('DOMContentLoaded', function() {
         else{
             console.warn(`Missing one or more elements for card group ${i}.`);
         }
-    } 
-    
-    console.log("topCard relative to container:",cardGroups[0].getTopCardContainerPosition());
-    console.log("bottomCard relative to container:",cardGroups[0].getBottomCardContainerPosition());
-
-    console.log("current cardContainer height:", cardContainer.getBoundingClientRect().height);
-    console.log("current topCard[2].bottom:",cardGroups[2].getTopCardContainerPosition().bottom);
-
-    let a = cardContainer.getBoundingClientRect().height;   
-    let b = a;
-    a += 100;
-    b = a - b;
-    cardContainer.style.height = `${a}px`;
-    
-    console.log(`translate element by ${b}px`);
-    cardGroups[2].topCard.style.transform = `translateY(${b}px)`;
-    console.log("topCard.bottom relative to container:", cardGroups[2].getTopCardContainerPosition().bottom);
-    console.log("cardContainer height:",a);
-
+    }
 });
