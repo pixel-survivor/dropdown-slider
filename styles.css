@@ -18,7 +18,8 @@
 .top-card{
     padding: 0.5em;
     position: relative;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
+    z-index: 1;
 }
 
 .bottom-card{
@@ -36,15 +37,26 @@
 #top-card-1{
     background-color: #7a7ab0;
 }
+#bottom-card-1, #bottom-card-2{
+    z-index: 0;
+}
 #top-card-2{
     background-color: #ff8e8e;
+
 }
 #top-card-3{
     background-color: #54ff54;
 }
+#top-card-4{
+    background-color: rgb(255, 123, 143);
+}
 #bottom-card-2{
-    background-color: #000000;
+    background-color: #7d6a6a;
+    font-size: .5rem;
 }
 #bottom-card-3{
     background-color: #ffe368;
+}
+#bottom-card-4{
+    background-color: rgb(92, 92, 255);
 }
