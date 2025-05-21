@@ -1,26 +1,34 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function(){
     const cardGroups = [];
     const topCardTranslations = [];
     const bottomCardTranslations = [];
     const topCards = document.querySelectorAll('#cardcontainer > .top-card');
     const cardContainer = document.getElementById('cardcontainer');
 
+    const ANIMATION_DURATION = 1400; 
+    const CLIP_PATH_DURATION = 1200; 
+    const EASING = 'cubic-bezier(0.25, 1, 0.5, 1)'; 
+
+    const cardTransition = `transform ${ANIMATION_DURATION}ms ${EASING}`;
+    const clipTransition = `clip-path ${CLIP_PATH_DURATION}ms ${EASING}`;
+    const containerTransition = `height ${ANIMATION_DURATION}ms ${EASING}`;
+
     if(topCards.length > 0){
         const lastTopCard = topCards[topCards.length-1];
         lastTopCard.style.marginBottom = '0px';
     }
 
-    function getElementPosition(element) {
+    function getElementPosition(element){
         const rect = element.getBoundingClientRect();
         const scrollTop = window.scrollY || document.documentElement.scrollTop;
 
-        return {
+        return{
             top: rect.top + scrollTop,
             bottom: rect.bottom + scrollTop,
         };
     }
 
-    for (let i = 1; i <= topCards.length; i++) {
+    for (let i = 1; i <= topCards.length; i++){
         const topCardId = `top-card-${i}`;
         const bottomCardId = `bottom-card-${i}`;
         const dropTriggerId = `drop-trigger-${i}`;
@@ -29,13 +37,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const bottomCard = document.getElementById(bottomCardId);
         const dropTrigger = document.getElementById(dropTriggerId);
 
-        if (topCard && bottomCard && dropTrigger) {
+        if(topCard && bottomCard && dropTrigger){
             const cardGroup = {
                 topCard: topCard,
                 bottomCard: bottomCard,
                 dropTrigger: dropTrigger,
                 index: i - 1,
-                getTopCardPosition: function() {
+                getTopCardPosition: function(){
                     return getElementPosition(this.topCard);
                 },
                 getTopCardContainerPosition: function(){
@@ -44,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         bottom: this.getTopCardPosition().bottom - getElementPosition(cardContainer).top,
                     };
                 },
-                getBottomCardPosition: function() {
+                getBottomCardPosition: function(){
                     return getElementPosition(this.bottomCard);
                 },
                 getBottomCardContainerPosition: function(){
@@ -57,26 +65,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
             cardGroups.push(cardGroup);
 
-            dropTrigger.addEventListener('click', function() {
+            dropTrigger.addEventListener('click', function(){
                 console.log(`Button ${dropTriggerId.split('-').pop()} clicked!`);
                 toggleState(cardGroups[cardGroup.index]);
             });
 
             const computedStyle = window.getComputedStyle(cardContainer);
             if(computedStyle.flexDirection === 'column'){
+                bottomCard.classList.add('closed');
+                
                 const translationValue = cardGroups[cardGroup.index].getTopCardContainerPosition().bottom - cardGroups[cardGroup.index].bottomCard.getBoundingClientRect().height;
-                cardGroups[cardGroup.index].bottomCard.style.transform = `translateY(${translationValue}px)`;
+                
+                cardGroup.bottomCard.style.transition = 'none';
+                cardGroup.bottomCard.style.transform = `translateY(${translationValue}px)`;
+                
+                setTimeout(() => {
+                    cardGroup.bottomCard.style.transition = `${cardTransition}, ${clipTransition}`;
+                    cardGroup.topCard.style.transition = cardTransition;
+                }, 0);
+                const clipAmount = calculateClipAmount(cardGroup);
+                cardGroup.bottomCard.style.clipPath = `inset(${clipAmount}px 0 0 0)`;
+
                 bottomCardTranslations.push(translationValue);
                 topCardTranslations.push(0);
-
             }
             else{
                 console.log("Flex-Direction: Row");
             }
-
         } 
         else{
             console.warn(`Missing one or more elements for card group ${i}.`);
+        }
+    }
+
+    function calculateClipAmount(cardGroup){
+        const topCardHeight = cardGroup.topCard.getBoundingClientRect().height;
+        const bottomCardHeight = cardGroup.bottomCard.getBoundingClientRect().height;
+        
+        if(cardGroup.bottomCard.classList.contains('closed')){
+            return bottomCardHeight - topCardHeight > 0 ? bottomCardHeight - topCardHeight : 0;
+        } 
+        else{
+            return 0;
         }
     }
 
@@ -84,153 +114,168 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("Initialized topCardTranslations[]:", topCardTranslations);
 
     function toggleState(cardGroup){
-        if(cardGroup.bottomCard.classList.contains('closed')){
-            console.log("Opening the card.....");
-            cardGroup.bottomCard.classList.toggle('closed');
-            cardGroup.bottomCard.classList.toggle('open');
-            matchTopToBottom(cardGroup);
-        }
-        else{
-            console.log("Closing the card.....");
-            cardGroup.bottomCard.classList.toggle('open');
-            cardGroup.bottomCard.classList.toggle('closed');
-            matchBottomToBottom(cardGroup);
-        }
-    }
-
-    function matchTopToBottom(cardGroup){
-        setNewTranslation(cardGroup);
-        console.log("new topCardTranslations:", topCardTranslations);
-        console.log("new bottomCardTranslations[]", bottomCardTranslations)
-    }
-
-    function matchBottomToBottom(cardGroup){
-    }
-
-    function setNewTranslation(cardGroup){
+        cardGroup.dropTrigger.disabled = true;
+        const initialCardHeights = storeInitialHeights();
         
-        if(cardGroup.bottomCard.classList.contains('open')){
-            bottomCardTranslations[cardGroup.index] += cardGroup.bottomCard.getBoundingClientRect().height;
-            const totalRecursions = checkForCollision(cardGroup);
-            setTimeout(function(){getMarginBottoms(cardGroups)},2200);
-            translateElement(cardGroup, totalRecursions);
-        }
+        const isOpening = cardGroup.bottomCard.classList.contains('closed');
+        
+        if(isOpening){
+            console.log("Opening the card...");
+            cardGroup.bottomCard.classList.remove('closed');
+            cardGroup.bottomCard.classList.add('open');
+            expandCard(cardGroup, initialCardHeights);
+        } 
         else{
+            console.log("Closing the card...");
+            cardGroup.bottomCard.classList.remove('open');
+            cardGroup.bottomCard.classList.add('closed');
+            collapseCard(cardGroup, initialCardHeights);
         }
+        
+        setTimeout(() => {
+            cardGroup.dropTrigger.disabled = false;
+        }, ANIMATION_DURATION);
+    }
+    
+    function storeInitialHeights(){
+        const heights = {};
+        cardGroups.forEach(group => {
+            const index = group.index;
+            heights[`top-${index}`] = group.topCard.getBoundingClientRect().height;
+            heights[`bottom-${index}`] = group.bottomCard.getBoundingClientRect().height;
+        });
+        return heights;
+    }
+    
+    function expandCard(cardGroup, initialHeights) {
+        const bottomCardHeight = initialHeights[`bottom-${cardGroup.index}`];
+        bottomCardTranslations[cardGroup.index] += bottomCardHeight;
+        
+        const totalRecursions = checkForCollision(cardGroup);
+        animateClipPath(cardGroup, true);
+        translateElement(cardGroup, totalRecursions);
+        
+        setTimeout(() => {
+            getMarginBottoms(cardGroups);
+        }, ANIMATION_DURATION + 100);
+    }
+    
+    function collapseCard(cardGroup, initialHeights){
+        const bottomCardHeight = initialHeights[`bottom-${cardGroup.index}`];
+        bottomCardTranslations[cardGroup.index] -= bottomCardHeight;
+        
+        const totalRecursions = collapseElements(cardGroup);
+        
+        animateClipPath(cardGroup, false);
+        translateElement(cardGroup, totalRecursions);
     }
 
     function translateElement(cardGroup, totalRecursions){
-
-        console.log(`Total Recursions: ${totalRecursions}, Total calls for checkForCollisions: ${totalRecursions+1}`);
-
         if(totalRecursions === 0){
-            console.log("No recursions were done.");
             cardGroup.bottomCard.style.transform = `translateY(${bottomCardTranslations[cardGroup.index]}px)`;
-            cardGroup.bottomCard.style.transition = 'transform 2s ease-in';
             return;
         }
-
-        if((cardGroup.index+totalRecursions) === (cardGroups.length-1)){    
-            console.log("Recursion occurred until the last element.");
-            for(let i = cardGroup.index; i < cardGroups.length; i++){
+        if((cardGroup.index + totalRecursions) >= (cardGroups.length - 1)){
+            for (let i = cardGroup.index; i < cardGroups.length; i++){
                 cardGroups[i].bottomCard.style.transform = `translateY(${bottomCardTranslations[i]}px)`;
-                cardGroups[i].bottomCard.style.transition = 'transform 2s ease-in';
                 cardGroups[i].topCard.style.transform = `translateY(${topCardTranslations[i]}px)`;
-                cardGroups[i].topCard.style.transition = 'transform 2s ease-in';
             }
-            
+            return;
+        }
+        
+        for (let i = cardGroup.index; i <= cardGroup.index + totalRecursions; i++){
+            cardGroups[i].bottomCard.style.transform = `translateY(${bottomCardTranslations[i]}px)`;
+            if(i > cardGroup.index){
+                cardGroups[i].topCard.style.transform = `translateY(${topCardTranslations[i]}px)`;
+            }
         }
     }
 
     function checkForCollision(cardGroup, translationValue = 0, depth = 0){
+        const currentBottomCardBottom = cardGroup.getBottomCardContainerPosition().bottom;
+        const bottomCardHeight = cardGroup.bottomCard.getBoundingClientRect().height;
+        
+        let newBottomCardBottom = translationValue ? 
+            currentBottomCardBottom + translationValue : 
+            currentBottomCardBottom + bottomCardHeight;
+        
+        const remainingElements = cardGroups.slice(cardGroup.index).length - 1;
 
-        let currentBottomCardBottom = cardGroup.getBottomCardContainerPosition().bottom;
-
-        console.log("The currentBottomCardBottom is", currentBottomCardBottom);
-        console.log("The height of the currentBottomCard is", cardGroup.bottomCard.getBoundingClientRect().height);
-
-        let newBottomCardBottom;
-        if(!translationValue){
-            newBottomCardBottom = currentBottomCardBottom + cardGroup.bottomCard.getBoundingClientRect().height;
-        }
-        else{
-            console.log("The translation value is", translationValue);
-            newBottomCardBottom = currentBottomCardBottom + translationValue;
-        }
-
-        console.log("The newBottomCardBottom is", newBottomCardBottom);
-
-        if(cardGroups[cardGroup.index+1]){
-            console.log("Next TopCard.top:", cardGroups[cardGroup.index+1].getTopCardContainerPosition().top);
-        }
-
-        let remainingElements = cardGroups.slice(cardGroup.index).length - 1;
-
-        if(!remainingElements){
+        if(remainingElements === 0){
             if(!translationValue){
-                console.log("This is the initial call for the last element.");
                 if(cardGroup.bottomCard.classList.contains('open')){
-                    cardContainer.style.height = `${cardContainer.getBoundingClientRect().height + cardGroup.bottomCard.getBoundingClientRect().height}px`; 
+                    updateContainerHeight(cardContainer, bottomCardHeight);
                     return 0;
                 }
-                else{ 
-                }
+                return 0;
             } 
             else{
-                console.log("This is a recursive call for the last element.");
-                if(cardGroup.bottomCard.classList.contains('closed')){;
-                    cardContainer.style.height = `${cardContainer.getBoundingClientRect().height + translationValue}px`;
-                    bottomCardTranslations[cardGroup.index] += translationValue;
-                    topCardTranslations[cardGroup.index] += translationValue; 
-                    return depth;
-                }
+                updateContainerHeight(cardContainer, translationValue);
                 
-                else{
-                    cardContainer.style.height = `${cardContainer.getBoundingClientRect().height + translationValue}px`;
-                    bottomCardTranslations[cardGroup.index] += translationValue;
-                    topCardTranslations[cardGroup.index] += translationValue; 
-                    return depth;
-                }
+                bottomCardTranslations[cardGroup.index] += translationValue;
+                topCardTranslations[cardGroup.index] += translationValue;
+                return depth;
             }
         }
-
+        
+        const nextCardTop = cardGroups[cardGroup.index + 1].getTopCardContainerPosition().top;
+        
+        if(newBottomCardBottom > nextCardTop){
+            if(!translationValue){
+                translationValue = bottomCardHeight;
+                return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
+            } 
+            else{
+                bottomCardTranslations[cardGroup.index] += translationValue;
+                topCardTranslations[cardGroup.index] += translationValue;
+                return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
+            }
+        } 
         else{
-            if(depth===0){
-                console.log("Initial Selected Index:", cardGroup.index);
-            }
+            if(!translationValue){
+                translationValue = bottomCardHeight;
+                return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
+            } 
             else{
-                console.log(`Recursive Index: ${depth}, cardGroup Index: ${cardGroup.index}, Next Index: ${cardGroup.index+1}`);
-            }
-
-            if(newBottomCardBottom > cardGroups[cardGroup.index+1].getTopCardContainerPosition().top){
-                if(!translationValue){
-                    console.log("They overlap, and this is the first call of checkForCollision for this sequence");
-                    translationValue = cardGroup.bottomCard.getBoundingClientRect().height;
-                    return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth); 
-                }
-                else{
-                    console.log("They overlap, and this is the subsequent (recursive) call of checkForCollision");
-                    bottomCardTranslations[cardGroup.index] += translationValue;   
-                    topCardTranslations[cardGroup.index] += translationValue;
-                    return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
-                }
-            }
-            else{
-                if(!translationValue){
-                    console.log("They do not overlap, and this is the first call of checkForCollision for this sequence.");
-                    translationValue = cardGroup.bottomCard.getBoundingClientRect().height;
-                    setTimeout(function(){getMarginBottoms(cardGroups)},2200);
-                    return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
-                } 
-                else{
-                    console.log("They do not overlap, and this is a subsequent (recursive) call of checkForCollision."); 
-                    bottomCardTranslations[cardGroup.index] += translationValue;   
-                    topCardTranslations[cardGroup.index] += translationValue;
-                    return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
-                }
+                bottomCardTranslations[cardGroup.index] += translationValue;
+                topCardTranslations[cardGroup.index] += translationValue;
+                return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
             }
         }
-    }   
+    }
+
+    function collapseElements(cardGroup){
+        const bottomCardHeight = cardGroup.bottomCard.getBoundingClientRect().height;
+        const remainingElements = cardGroups.slice(cardGroup.index).length - 1;
+
+        if(remainingElements === 0){
+            updateContainerHeight(cardContainer, -bottomCardHeight);
+            return 0;
+        } 
+        else{
+            let depth = 0;
+            for (let i = 1; i <= remainingElements; i++){
+                let index = cardGroup.index + i;
+                bottomCardTranslations[index] -= bottomCardHeight;
+                topCardTranslations[index] -= bottomCardHeight;
+                depth++;
+                
+                if(i === remainingElements){
+                    updateContainerHeight(cardContainer, -bottomCardHeight);
+                }
+            }
+            return depth;
+        }
+    }
+    function updateContainerHeight(container, heightChange){
+        const currentHeight = container.getBoundingClientRect().height;
+        container.style.height = `${currentHeight}px`;
+        container.style.transition = containerTransition;
+        
+        requestAnimationFrame(() => {
+            container.style.height = `${currentHeight + heightChange}px`;
+        });
+    }
 
     function getMarginBottoms(cardGroups){
         for(let i = 0; i < cardGroups.length-1; i++){
@@ -238,5 +283,25 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("marginBottom", marginBottom);
         }
     }
-});
 
+    function animateClipPath(cardGroup, isOpening){
+        const bottomCard = cardGroup.bottomCard;
+        const topCard = cardGroup.topCard;
+        const bottomCardHeight = bottomCard.getBoundingClientRect().height;
+        const topCardHeight = topCard.getBoundingClientRect().height;
+        const clipAmount = Math.max(0, bottomCardHeight - topCardHeight);
+        
+        if(isOpening){
+            bottomCard.style.clipPath = `inset(${clipAmount}px 0 0 0)`;
+            requestAnimationFrame(() => {
+                bottomCard.style.clipPath = 'inset(0 0 0 0)';
+            });
+        } 
+        else{
+            bottomCard.style.clipPath = 'inset(0 0 0 0)';
+            requestAnimationFrame(() => {
+                bottomCard.style.clipPath = `inset(${clipAmount}px 0 0 0)`;
+            });
+        }
+    }
+});

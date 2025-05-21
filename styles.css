@@ -8,7 +8,7 @@
 #cardcontainer{
     display: flex;
     flex-direction: column;
-    margin: 150px auto;
+    margin: 150px auto 0 auto;
     text-align: center;
     width: 80%;
     position: relative;
@@ -20,6 +20,7 @@
     position: relative;
     margin-bottom: 25px;
     z-index: 1;
+    opacity: 80%;
 }
 
 .bottom-card{
@@ -28,6 +29,8 @@
     width: 100%;
     position: absolute;
     z-index: 1;
+    clip-path: inset(0 0 0 0);
+    z-index: 0;
 }
 
 .drop-trigger{
@@ -36,9 +39,6 @@
 
 #top-card-1{
     background-color: #7a7ab0;
-}
-#bottom-card-1, #bottom-card-2{
-    z-index: 0;
 }
 #top-card-2{
     background-color: #ff8e8e;
@@ -55,7 +55,7 @@
     font-size: .5rem;
 }
 #bottom-card-3{
-    background-color: #ffe368;
+    background-color: #e118e1;
 }
 #bottom-card-4{
     background-color: rgb(92, 92, 255);

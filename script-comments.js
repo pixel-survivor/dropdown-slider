@@ -1,9 +1,19 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function(){
     const cardGroups = [];
     const topCardTranslations = [];
     const bottomCardTranslations = [];
     const topCards = document.querySelectorAll('#cardcontainer > .top-card');
     const cardContainer = document.getElementById('cardcontainer');
+
+    // Animation configuration
+    const ANIMATION_DURATION = 1400; // milliseconds
+    const CLIP_PATH_DURATION = 1200; // milliseconds for clip-path animations
+    const EASING = 'cubic-bezier(0.25, 1, 0.5, 1)'; // More natural easing function
+
+    // Define transitions
+    const cardTransition = `transform ${ANIMATION_DURATION}ms ${EASING}`;
+    const clipTransition = `clip-path ${CLIP_PATH_DURATION}ms ${EASING}`;
+    const containerTransition = `height ${ANIMATION_DURATION}ms ${EASING}`;
 
     //Set the margin-bottom of last top-card to 0
     if(topCards.length > 0){
@@ -11,17 +21,17 @@ document.addEventListener('DOMContentLoaded', function() {
         lastTopCard.style.marginBottom = '0px';
     }
 
-    function getElementPosition(element) {
+    function getElementPosition(element){
         const rect = element.getBoundingClientRect();
         const scrollTop = window.scrollY || document.documentElement.scrollTop;
 
-        return {
+        return{
             top: rect.top + scrollTop,
             bottom: rect.bottom + scrollTop,
         };
     }
 
-    for (let i = 1; i <= topCards.length; i++) {
+    for (let i = 1; i <= topCards.length; i++){
         const topCardId = `top-card-${i}`;
         const bottomCardId = `bottom-card-${i}`;
         const dropTriggerId = `drop-trigger-${i}`;
@@ -30,13 +40,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const bottomCard = document.getElementById(bottomCardId);
         const dropTrigger = document.getElementById(dropTriggerId);
 
-        if (topCard && bottomCard && dropTrigger) {
+        if(topCard && bottomCard && dropTrigger){
             const cardGroup = {
                 topCard: topCard,
                 bottomCard: bottomCard,
                 dropTrigger: dropTrigger,
                 index: i - 1,
-                getTopCardPosition: function() {
+                getTopCardPosition: function(){
                     return getElementPosition(this.topCard); //returns position relative to document: {top: #px, bottom: #px}
                 },
                 getTopCardContainerPosition: function(){
@@ -45,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         bottom: this.getTopCardPosition().bottom - getElementPosition(cardContainer).top,
                     };
                 },
-                getBottomCardPosition: function() {
+                getBottomCardPosition: function(){
                     return getElementPosition(this.bottomCard);
                 },
                 getBottomCardContainerPosition: function(){
@@ -58,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             cardGroups.push(cardGroup);
 
-            dropTrigger.addEventListener('click', function() {
+            dropTrigger.addEventListener('click', function(){
                 console.log(`Button ${dropTriggerId.split('-').pop()} clicked!`);
                 toggleState(cardGroups[cardGroup.index]);
             });
@@ -66,12 +76,29 @@ document.addEventListener('DOMContentLoaded', function() {
             //Check if the cardContainer is set to flex-direction: column/row
             const computedStyle = window.getComputedStyle(cardContainer);
             if(computedStyle.flexDirection === 'column'){
-                //Initialize the default position of each bottomCard
+                // Pre-position all bottom cards in their closed state
+                bottomCard.classList.add('closed');
+                
+                // Initialize the default position of each bottomCard
                 const translationValue = cardGroups[cardGroup.index].getTopCardContainerPosition().bottom - cardGroups[cardGroup.index].bottomCard.getBoundingClientRect().height;
-                cardGroups[cardGroup.index].bottomCard.style.transform = `translateY(${translationValue}px)`;
-                //Push the translationValue for later changes
+                
+                // Set initial transform and avoid transitions during setup
+                cardGroup.bottomCard.style.transition = 'none';
+                cardGroup.bottomCard.style.transform = `translateY(${translationValue}px)`;
+                
+                // Setup future transitions (will be applied after visibility)
+                setTimeout(() => {
+                    cardGroup.bottomCard.style.transition = `${cardTransition}, ${clipTransition}`;
+                    cardGroup.topCard.style.transition = cardTransition;
+                }, 0);
+
+                // Calculate initial clip-path value
+                const clipAmount = calculateClipAmount(cardGroup);
+                cardGroup.bottomCard.style.clipPath = `inset(${clipAmount}px 0 0 0)`;
+
+                // Push the translationValue for later changes
                 bottomCardTranslations.push(translationValue);
-                topCardTranslations.push(0); //Initialize 0 for the topCards for later use
+                topCardTranslations.push(0); // Initialize 0 for the topCards for later use
             }
             else{
                 console.log("Flex-Direction: Row");
@@ -82,218 +109,228 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Calculate proper clip amount based on card heights
+    function calculateClipAmount(cardGroup){
+        const topCardHeight = cardGroup.topCard.getBoundingClientRect().height;
+        const bottomCardHeight = cardGroup.bottomCard.getBoundingClientRect().height;
+        
+        if(cardGroup.bottomCard.classList.contains('closed')){
+            return bottomCardHeight - topCardHeight > 0 ? bottomCardHeight - topCardHeight : 0;
+        } 
+        else{
+            return 0;
+        }
+    }
+
     console.log("Initialized bottomCardTranslations[]:",bottomCardTranslations); //log the bottomCardTranslations array after initializing
     console.log("Initialized topCardTranslations[]:", topCardTranslations); //log the topCardTranslations array after initializing
 
     function toggleState(cardGroup){
-        if(cardGroup.bottomCard.classList.contains('closed')){
-            console.log("Opening the card.....");
-            cardGroup.bottomCard.classList.toggle('closed');
-            cardGroup.bottomCard.classList.toggle('open');
-            matchTopToBottom(cardGroup);
-        }
+        cardGroup.dropTrigger.disabled = true;
+        
+        // Store initial heights and dimensions for calculations
+        const initialCardHeights = storeInitialHeights();
+        
+        // Toggle the card state
+        const isOpening = cardGroup.bottomCard.classList.contains('closed');
+        
+        if(isOpening){
+            console.log("Opening the card...");
+            cardGroup.bottomCard.classList.remove('closed');
+            cardGroup.bottomCard.classList.add('open');
+            expandCard(cardGroup, initialCardHeights);
+        } 
         else{
-            console.log("Closing the card.....");
-            cardGroup.bottomCard.classList.toggle('open');
-            cardGroup.bottomCard.classList.toggle('closed');
-            matchBottomToBottom(cardGroup);
+            console.log("Closing the card...");
+            cardGroup.bottomCard.classList.remove('open');
+            cardGroup.bottomCard.classList.add('closed');
+            collapseCard(cardGroup, initialCardHeights);
         }
+        
+        // Re-enable the trigger button after animation completes
+        setTimeout(() => {
+            cardGroup.dropTrigger.disabled = false;
+        }, ANIMATION_DURATION);
     }
-
-    //Align top-edge of bottomCard to bottom-edge of topCard (closed --> open)
-    function matchTopToBottom(cardGroup){
-        setNewTranslation(cardGroup);
-        console.log("new topCardTranslations:", topCardTranslations);
-        console.log("new bottomCardTranslations[]", bottomCardTranslations)
+    
+    // Store initial heights of all cards for precise calculations
+    function storeInitialHeights(){
+        const heights = {};
+        cardGroups.forEach(group => {
+            const index = group.index;
+            heights[`top-${index}`] = group.topCard.getBoundingClientRect().height;
+            heights[`bottom-${index}`] = group.bottomCard.getBoundingClientRect().height;
+        });
+        return heights;
     }
-
-    //Align bottom-edge of bottomCard to bottom-edge of topCard (open --> closed)
-    function matchBottomToBottom(cardGroup){
+    
+    // Expand the card and handle animations
+    function expandCard(cardGroup, initialHeights){
+        // Update translations
+        const bottomCardHeight = initialHeights[`bottom-${cardGroup.index}`];
+        bottomCardTranslations[cardGroup.index] += bottomCardHeight;
+        
+        // Calculate which cards need to be moved
+        const totalRecursions = checkForCollision(cardGroup);
+        
+        // Animate clip-path to reveal content
+        animateClipPath(cardGroup, true);
+        
+        // Apply translations to all cards that need to move
+        translateElement(cardGroup, totalRecursions);
+        
+        // Check margins after animation completes
+        setTimeout(() => {
+            getMarginBottoms(cardGroups);
+        }, ANIMATION_DURATION + 100);
     }
-
-    function setNewTranslation(cardGroup){
-        //if matchTopToBottom, (closed->open) the classList will contain 'open', translate the element down.
-        if(cardGroup.bottomCard.classList.contains('open')){
-            //The height of the bottomCard determines how much we have to translate it. Store the updated translation to help determine collision *before* translation
-            bottomCardTranslations[cardGroup.index] += cardGroup.bottomCard.getBoundingClientRect().height;
-            //Determine how many cards are being shifted by getting a total amount of recursion.
-            const totalRecursions = checkForCollision(cardGroup);
-            //Check if margins are still even
-            setTimeout(function(){getMarginBottoms(cardGroups)},2200);
-            //Translates the target element taking into account collision of other elements.
-            translateElement(cardGroup, totalRecursions);
-        }
-        //else matchBottomToBottom, (open->closed), the class will have 'closed', translate the element up. (open->close)
-        else{
-            //...Coming soon
-        }
+    
+    // Collapse the card and handle animations
+    function collapseCard(cardGroup, initialHeights){
+        // Update translations
+        const bottomCardHeight = initialHeights[`bottom-${cardGroup.index}`];
+        bottomCardTranslations[cardGroup.index] -= bottomCardHeight;
+        
+        // Calculate which cards need to be moved
+        const totalRecursions = collapseElements(cardGroup);
+        
+        // Animate clip-path to hide content
+        animateClipPath(cardGroup, false);
+        
+        // Apply translations to affected cards
+        translateElement(cardGroup, totalRecursions);
     }
 
     function translateElement(cardGroup, totalRecursions){
-
-        console.log(`Total Recursions: ${totalRecursions}, Total calls for checkForCollisions: ${totalRecursions+1}`);
-
+        // If no recursions, only move the bottom card
         if(totalRecursions === 0){
-            console.log("No recursions were done.");
             cardGroup.bottomCard.style.transform = `translateY(${bottomCardTranslations[cardGroup.index]}px)`;
-            cardGroup.bottomCard.style.transition = 'transform 2s ease-in';
             return;
         }
-
-        //If true, recursion occurred until the end of the array
-        if((cardGroup.index+totalRecursions) === (cardGroups.length-1)){    
-            console.log("Recursion occurred until the last element.");
-            for(let i = cardGroup.index; i < cardGroups.length; i++){
-                cardGroups[i].bottomCard.style.transform = `translateY(${bottomCardTranslations[i]}px)`;
-                cardGroups[i].bottomCard.style.transition = 'transform 2s ease-in';
-                cardGroups[i].topCard.style.transform = `translateY(${topCardTranslations[i]}px)`;
-                cardGroups[i].topCard.style.transition = 'transform 2s ease-in';
-            }
-            
-        }
-        /* KEEPING JUST IN CASE
         
-        //Otherwise, recursion ended somewhere in the middle array.
-        else{
-            //Calculate how many elements until the end of the array
-            let remainingElements = (cardGroups.length-1) - (cardGroup.index+totalRecursions);
-
-            console.log("Recursion did NOT occur until the last element.");
-            console.log(`cardGroup.index: ${cardGroup.index}, totalRecursions: ${totalRecursions}, Remaining Elements in cardGroups: ${remainingElements}`);
-            
-            for(let i = cardGroup.index; i <= cardGroup.index + totalRecursions; i++){
+        // If recursions reached end of array, move all affected cards
+        if((cardGroup.index + totalRecursions) >= (cardGroups.length - 1)){
+            for (let i = cardGroup.index; i < cardGroups.length; i++){
                 cardGroups[i].bottomCard.style.transform = `translateY(${bottomCardTranslations[i]}px)`;
-                cardGroups[i].bottomCard.style.transition = 'transform 2s ease-in';
                 cardGroups[i].topCard.style.transform = `translateY(${topCardTranslations[i]}px)`;
-                cardGroups[i].topCard.style.transition = 'transform 2s ease-in';
-                //Logs what index the loop stopped on.
-                if(i === cardGroup.index + totalRecursions){
-                    console.log(`Last element-index translated: ${i}`);
-                }
-            }   
+            }
+            return;
         }
-        */
+        
+        // Otherwise, move only the cards that were affected
+        for (let i = cardGroup.index; i <= cardGroup.index + totalRecursions; i++){
+            cardGroups[i].bottomCard.style.transform = `translateY(${bottomCardTranslations[i]}px)`;
+            if(i > cardGroup.index){
+                cardGroups[i].topCard.style.transform = `translateY(${topCardTranslations[i]}px)`;
+            }
+        }
     }
 
     function checkForCollision(cardGroup, translationValue = 0, depth = 0){
+        // Get positions
+        const currentBottomCardBottom = cardGroup.getBottomCardContainerPosition().bottom;
+        const bottomCardHeight = cardGroup.bottomCard.getBoundingClientRect().height;
+        
+        // Calculate new position
+        let newBottomCardBottom = translationValue ? 
+            currentBottomCardBottom + translationValue : 
+            currentBottomCardBottom + bottomCardHeight;
+        
+        // Check remaining elements
+        const remainingElements = cardGroups.slice(cardGroup.index).length - 1;
 
-        //stores the current bottomCard *bottom* position
-        let currentBottomCardBottom = cardGroup.getBottomCardContainerPosition().bottom;
-
-        console.log("The currentBottomCardBottom is", currentBottomCardBottom);
-        console.log("The height of the currentBottomCard is", cardGroup.bottomCard.getBoundingClientRect().height);
-
-        let newBottomCardBottom;
-        if(!translationValue){
-            //calculates and sets the future bottomCard *bottom* position 
-            newBottomCardBottom = currentBottomCardBottom + cardGroup.bottomCard.getBoundingClientRect().height;
-        }
-        else{
-            //calculates and sets the future bottomCard *bottom* position (recursion adjustment)
-            console.log("The translation value is", translationValue);
-            newBottomCardBottom = currentBottomCardBottom + translationValue;
-        }
-
-        console.log("The newBottomCardBottom is", newBottomCardBottom);
-
-        if(cardGroups[cardGroup.index+1]){
-            console.log("Next TopCard.top:", cardGroups[cardGroup.index+1].getTopCardContainerPosition().top);
-        }
-
-        //determines how many remaining elements are in cardGroups from the current index
-        let remainingElements = cardGroups.slice(cardGroup.index).length - 1;
-
-        if(!remainingElements){ //last index of cardGroups
-            //True if this index was clicked; not called recursively.
+        // Last element in array
+        if(remainingElements === 0){
             if(!translationValue){
-                console.log("This is the initial call for the last element.");
-
-                //True if matchTopToBottom is invoked (closed -> open)
+                // Initial call for last element
                 if(cardGroup.bottomCard.classList.contains('open')){
-                    // INCORRECT IMPLEMENTATION, cannot be "bottomCardTranslations[cardGroup.index]" ---- that will include the *entire* translation, not just what should have been added.
-                    // cardContainer.style.height = `${cardContainer.getBoundingClientRect().height + bottomCardTranslations[cardGroup.index]}px`;
-                    
-                    // CORRECT IMPLEMENTATION, sets the cardContainer height then returns to end the function from running further.
-                    cardContainer.style.height = `${cardContainer.getBoundingClientRect().height + cardGroup.bottomCard.getBoundingClientRect().height}px`; 
-                    return 0; //no recursions occurred.
+                    // Adjust container height
+                    updateContainerHeight(cardContainer, bottomCardHeight);
+                    return 0;
                 }
-                else{ //cardGroup.bottomCard.classList.contains('closed')(open -> closed);
-                    //Future Logic Here
-                }
+                return 0;
             } 
-            //Invoked if it's a recursive call.
             else{
-                console.log("This is a recursive call for the last element.");
-                if(cardGroup.bottomCard.classList.contains('closed')){;
-                    //Increase the height of the container to make way for the elements.
-                    cardContainer.style.height = `${cardContainer.getBoundingClientRect().height + translationValue}px`;
-                    //Update the translation values for topCards and bottomCards.
-                    bottomCardTranslations[cardGroup.index] += translationValue;
-                    topCardTranslations[cardGroup.index] += translationValue; 
-                    return depth;
-                }
+                // Recursive call for last element
+                updateContainerHeight(cardContainer, translationValue);
                 
-                else{
-                    cardContainer.style.height = `${cardContainer.getBoundingClientRect().height + translationValue}px`;
-                    bottomCardTranslations[cardGroup.index] += translationValue;
-                    topCardTranslations[cardGroup.index] += translationValue; 
-                    return depth;
-                }
+                // Update translations
+                bottomCardTranslations[cardGroup.index] += translationValue;
+                topCardTranslations[cardGroup.index] += translationValue;
+                return depth;
             }
         }
-
-        //Not the last index
+        
+        // Not the last element - check for collision with next card
+        const nextCardTop = cardGroups[cardGroup.index + 1].getTopCardContainerPosition().top;
+        
+        // Check if elements will overlap
+        if(newBottomCardBottom > nextCardTop){
+            if(!translationValue){
+                // Initial call - pass the height as translation value
+                translationValue = bottomCardHeight;
+                return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
+            } 
+            else{
+                // Recursive call - update translations and continue
+                bottomCardTranslations[cardGroup.index] += translationValue;
+                topCardTranslations[cardGroup.index] += translationValue;
+                return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
+            }
+        } 
         else{
-            //Logs the initial selected index
-            if(depth===0){
-                console.log("Initial Selected Index:", cardGroup.index);
-            }
+            // No overlap
+            if(!translationValue){
+                // Initial call - pass height as translation value
+                translationValue = bottomCardHeight;
+                return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
+            } 
             else{
-                console.log(`Recursive Index: ${depth}, cardGroup Index: ${cardGroup.index}, Next Index: ${cardGroup.index+1}`);
-            }
-
-            //True if (closed->open) bottomCard overlaps the next topCard
-            if(newBottomCardBottom > cardGroups[cardGroup.index+1].getTopCardContainerPosition().top){
-                //True if this is an initial call
-                if(!translationValue){
-                    console.log("They overlap, and this is the first call of checkForCollision for this sequence");
-                    //This is the value which everything will translate downwards
-                    translationValue = cardGroup.bottomCard.getBoundingClientRect().height;
-                    //No translations array updates needed on initial calls.
-                    return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth); 
-                }
-                //This is a recursive call
-                else{
-                    console.log("They overlap, and this is the subsequent (recursive) call of checkForCollision");
-                    //Update the translation values for top and bottomCards. 
-                    //Because the newBottomCardBottom overlaps the next cardGroup's topCard top-edge, we must move the element to accommodate, so we must also store it.
-                    bottomCardTranslations[cardGroup.index] += translationValue;   
-                    topCardTranslations[cardGroup.index] += translationValue;
-                    return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
-                }
-            }
-            //Else (closed->open) bottomCard does NOT overlap the next topCard
-            else{
-                //True if first call for checkForCollision
-                if(!translationValue){
-                    console.log("They do not overlap, and this is the first call of checkForCollision for this sequence.");
-                    //Adjust elements below to maintain even margin-bottoms
-                    translationValue = cardGroup.bottomCard.getBoundingClientRect().height;
-                    //Check if margins are still even
-                    setTimeout(function(){getMarginBottoms(cardGroups)},2200);
-                    //No translations array updates needed on initial calls.
-                    return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
-                } 
-                else{
-                    console.log("They do not overlap, and this is a subsequent (recursive) call of checkForCollision."); 
-                    bottomCardTranslations[cardGroup.index] += translationValue;   
-                    topCardTranslations[cardGroup.index] += translationValue;
-                    return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
-                }
+                // Recursive call - update translations and continue
+                bottomCardTranslations[cardGroup.index] += translationValue;
+                topCardTranslations[cardGroup.index] += translationValue;
+                return checkForCollision(cardGroups[cardGroup.index + 1], translationValue, ++depth);
             }
         }
-        //end of recursion, no return statements, any code can be executed here.
-    }   
+    }
+
+    function collapseElements(cardGroup){
+        const bottomCardHeight = cardGroup.bottomCard.getBoundingClientRect().height;
+        const remainingElements = cardGroups.slice(cardGroup.index).length - 1;
+
+        if(remainingElements === 0){
+            // Last element - just update container height
+            updateContainerHeight(cardContainer, -bottomCardHeight);
+            return 0;
+        } 
+        else{
+            // Not last element - update translations for all cards below
+            let depth = 0;
+            for (let i = 1; i <= remainingElements; i++){
+                let index = cardGroup.index + i;
+                bottomCardTranslations[index] -= bottomCardHeight;
+                topCardTranslations[index] -= bottomCardHeight;
+                depth++;
+                
+                if(i === remainingElements){
+                    // Update container height after all translations are set
+                    updateContainerHeight(cardContainer, -bottomCardHeight);
+                }
+            }
+            return depth;
+        }
+    }
+
+    // Update container height smoothly
+    function updateContainerHeight(container, heightChange){
+        const currentHeight = container.getBoundingClientRect().height;
+        container.style.height = `${currentHeight}px`;
+        container.style.transition = containerTransition;
+        
+        requestAnimationFrame(() => {
+            container.style.height = `${currentHeight + heightChange}px`;
+        });
+    }
 
     function getMarginBottoms(cardGroups){
         for(let i = 0; i < cardGroups.length-1; i++){
@@ -301,5 +338,37 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("marginBottom", marginBottom);
         }
     }
-});
 
+    // Handle dynamic clip-path animation
+    function animateClipPath(cardGroup, isOpening){
+        const bottomCard = cardGroup.bottomCard;
+        const topCard = cardGroup.topCard;
+        
+        // Get dimensions
+        const bottomCardHeight = bottomCard.getBoundingClientRect().height;
+        const topCardHeight = topCard.getBoundingClientRect().height;
+        
+        // Calculate proper clip amount - the part that extends above the top card
+        const clipAmount = Math.max(0, bottomCardHeight - topCardHeight);
+        
+        if(isOpening){
+            // For opening animation: start with clip, then animate to fully visible
+            // Start with calculated clip amount
+            bottomCard.style.clipPath = `inset(${clipAmount}px 0 0 0)`;
+            
+            // Animate to fully visible after a short delay for smoother transition
+            requestAnimationFrame(() => {
+                bottomCard.style.clipPath = 'inset(0 0 0 0)';
+            });
+        } 
+        else{
+            // For closing animation: start visible, then animate to clipped
+            bottomCard.style.clipPath = 'inset(0 0 0 0)';
+            
+            // Animate to clipped state
+            requestAnimationFrame(() => {
+                bottomCard.style.clipPath = `inset(${clipAmount}px 0 0 0)`;
+            });
+        }
+    }
+});
